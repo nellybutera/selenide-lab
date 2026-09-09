@@ -1,0 +1,73 @@
+name: Selenide UI Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [ chrome, firefox ]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Install Google Chrome
+        if: matrix.browser == 'chrome'
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Install Firefox
+        if: matrix.browser == 'firefox'
+        uses: browser-actions/setup-firefox@v1
+
+      - name: Run tests (headless ${{ matrix.browser }})
+        run: mvn test -Dselenide.browser=${{ matrix.browser }}
+        env:
+          CI: true   # triggers headless mode in BaseTest
+
+      - name: Upload failure screenshots
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: screenshots-${{ matrix.browser }}
+          path: target/screenshots
+          if-no-files-found: ignore
+
+      - name: Load Allure history
+        uses: actions/checkout@v4
+        if: always() && matrix.browser == 'chrome'
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Generate Allure report
+        uses: simple-elf/allure-report-action@master
+        if: always() && matrix.browser == 'chrome'
+        with:
+          allure_results: target/allure-results
+          allure_history: allure-history
+          keep_reports: 20
+
+      - name: Publish Allure report to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        if: always() && matrix.browser == 'chrome'
+        with:
+          folder: allure-history
+          branch: gh-pages
