@@ -1,0 +1,39 @@
+name: Nightly Regression Run
+
+# The suite's target (saucedemo.com) is a live external site we don't control, so this
+# runs the full suite once a day independent of any code change - a canary for the site
+# itself drifting out from under the tests, not just for regressions in this repo.
+on:
+  schedule:
+    - cron: '0 3 * * *' # 03:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Install Google Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Run full suite (headless chrome)
+        run: mvn test -Dselenide.browser=chrome
+        env:
+          CI: true
+
+      - name: Upload failure screenshots
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: nightly-failure-screenshots
+          path: target/screenshots
+          if-no-files-found: ignore
