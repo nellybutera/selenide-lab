@@ -1,5 +1,8 @@
 # Selenide Lab — Swag Labs UI Automation
 
+[![CI](https://github.com/nellybutera/selenide-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/nellybutera/selenide-lab/actions/workflows/ci.yml)
+[![Nightly Regression](https://github.com/nellybutera/selenide-lab/actions/workflows/nightly.yml/badge.svg)](https://github.com/nellybutera/selenide-lab/actions/workflows/nightly.yml)
+
 QA Automation lab — Selenide-based UI test suite for the [Swag Labs demo app](https://www.saucedemo.com/), covering login, product browsing, cart, and checkout.
 
 ## Stack
@@ -92,7 +95,10 @@ docker run selenide-lab
 
 ## CI / Allure Report
 
-Every push to `main` triggers the GitHub Actions pipeline, which runs the full suite headlessly against both Chrome and Firefox. Failure screenshots are uploaded as workflow artifacts, and the Allure report (from the Chrome run) is published to GitHub Pages:
+Two workflows:
+
+- **`ci.yml`** — runs on every push/PR to `main` (and on demand via "Run workflow" in the Actions tab), headlessly against both Chrome and Firefox. Failure screenshots are uploaded as workflow artifacts, and the Allure report (from the Chrome run) is published to GitHub Pages.
+- **`nightly.yml`** — runs the full suite once a day (and on demand) independent of any code change. The suite's target is a live external site this repo doesn't control, so this is a canary for the *site* drifting out from under the tests, not just for regressions here.
 
 **[View Allure Report](https://nellybutera.github.io/selenide-lab/)**
 
