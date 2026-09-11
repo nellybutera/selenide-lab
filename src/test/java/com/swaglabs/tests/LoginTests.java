@@ -9,10 +9,11 @@ import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.CsvFileSource;
 
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.open;
@@ -33,6 +34,7 @@ class LoginTests extends BaseTest {
     }
 
     @Test
+    @DisplayName("Verify that a standard user can log in and land on the products page")
     @Severity(SeverityLevel.BLOCKER)
     @Description("A standard user can log in and lands on the products page")
     void standardUserCanLogIn() {
@@ -42,14 +44,10 @@ class LoginTests extends BaseTest {
         assertTrue(productsPage.getProductCount() > 0, "Products page should list items after login");
     }
 
-    @ParameterizedTest(name = "{0}/{1} -> \"{2}\"")
+    @ParameterizedTest(name = "Verify that login is rejected for {0}")
     @Severity(SeverityLevel.CRITICAL)
     @Description("Invalid credentials are rejected with the exact Swag Labs error message")
-    @CsvSource({
-            "locked_out_user, secret_sauce, 'Epic sadface: Sorry, this user has been locked out.'",
-            "standard_user,  '',            'Epic sadface: Password is required'",
-            "no_such_user,   secret_sauce,  'Epic sadface: Username and password do not match any user in this service'"
-    })
+    @CsvFileSource(resources = "/testdata/invalid_logins.csv", numLinesToSkip = 1, emptyValue = "")
     void invalidLoginIsRejected(String username, String password, String expectedError) {
         loginPage.attemptLogin(username, password);
 
@@ -57,6 +55,7 @@ class LoginTests extends BaseTest {
     }
 
     @Test
+    @DisplayName("Verify that a user can log out and log back in with the same credentials")
     @Severity(SeverityLevel.NORMAL)
     @Description("A user can log out and log back in with the same credentials")
     void canLogOutAndLogBackIn() {
@@ -70,6 +69,7 @@ class LoginTests extends BaseTest {
     }
 
     @Test
+    @DisplayName("Verify that navigating directly to the inventory page without logging in is rejected")
     @Severity(SeverityLevel.CRITICAL)
     @Description("Navigating directly to the inventory page without logging in is rejected")
     void cannotAccessInventoryPageDirectlyWithoutLogin() {

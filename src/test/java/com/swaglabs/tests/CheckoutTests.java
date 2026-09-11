@@ -1,5 +1,7 @@
 package com.swaglabs.tests;
 
+import com.swaglabs.data.Buyer;
+import com.swaglabs.data.Products;
 import com.swaglabs.data.Users;
 import com.swaglabs.pages.CartPage;
 import com.swaglabs.pages.CheckoutCompletePage;
@@ -11,6 +13,7 @@ import io.qameta.allure.Description;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -29,16 +32,17 @@ class CheckoutTests extends BaseTest {
     @BeforeEach
     void setUp() {
         ProductsPage productsPage = new LoginPage().navigateTo().loginAs(Users.STANDARD_USER, Users.PASSWORD);
-        productsPage.addProductToCart("Sauce Labs Backpack");
-        productsPage.addProductToCart("Sauce Labs Bike Light");
+        productsPage.addProductToCart(Products.BACKPACK);
+        productsPage.addProductToCart(Products.BIKE_LIGHT);
         cartPage = productsPage.goToCart();
     }
 
     @Test
+    @DisplayName("Verify that a full checkout with valid buyer info completes and shows the confirmation page")
     @Description("A full checkout with valid buyer info completes and shows the confirmation page")
     void canCompleteCheckoutWithValidInfo() {
         CheckoutCompletePage completePage = cartPage.checkout()
-                .fillInfo("Nelly", "Butera", "00000")
+                .fillInfo(Buyer.FIRST_NAME, Buyer.LAST_NAME, Buyer.POSTAL_CODE)
                 .continueCheckout()
                 .finish();
 
@@ -46,14 +50,15 @@ class CheckoutTests extends BaseTest {
     }
 
     @Test
+    @DisplayName("Verify that checkout can be completed even when the cart is empty")
     @Description("Checkout can be completed even when the cart is empty")
     void canCheckoutWithEmptyCart() {
-        cartPage.removeItem("Sauce Labs Backpack");
-        cartPage.removeItem("Sauce Labs Bike Light");
+        cartPage.removeItem(Products.BACKPACK);
+        cartPage.removeItem(Products.BIKE_LIGHT);
         assertEquals(0, cartPage.getItemCount());
 
         CheckoutCompletePage completePage = cartPage.checkout()
-                .fillInfo("Nelly", "Butera", "00000")
+                .fillInfo(Buyer.FIRST_NAME, Buyer.LAST_NAME, Buyer.POSTAL_CODE)
                 .continueCheckout()
                 .finish();
 
@@ -61,9 +66,10 @@ class CheckoutTests extends BaseTest {
     }
 
     @Test
+    @DisplayName("Verify that checkout step one rejects submission when the first name is missing")
     @Description("Checkout step one rejects submission when the first name is missing")
     void checkoutRequiresFirstName() {
-        CheckoutStepOnePage stepOne = cartPage.checkout().fillInfo("", "Butera", "00000");
+        CheckoutStepOnePage stepOne = cartPage.checkout().fillInfo("", Buyer.LAST_NAME, Buyer.POSTAL_CODE);
 
         stepOne.continueCheckout();
 
@@ -71,9 +77,10 @@ class CheckoutTests extends BaseTest {
     }
 
     @Test
+    @DisplayName("Verify that checkout step one rejects submission when the last name is missing")
     @Description("Checkout step one rejects submission when the last name is missing")
     void checkoutRequiresLastName() {
-        CheckoutStepOnePage stepOne = cartPage.checkout().fillInfo("Nelly", "", "00000");
+        CheckoutStepOnePage stepOne = cartPage.checkout().fillInfo(Buyer.FIRST_NAME, "", Buyer.POSTAL_CODE);
 
         stepOne.continueCheckout();
 
@@ -81,9 +88,10 @@ class CheckoutTests extends BaseTest {
     }
 
     @Test
+    @DisplayName("Verify that checkout step one rejects submission when the postal code is missing")
     @Description("Checkout step one rejects submission when the postal code is missing")
     void checkoutRequiresPostalCode() {
-        CheckoutStepOnePage stepOne = cartPage.checkout().fillInfo("Nelly", "Butera", "");
+        CheckoutStepOnePage stepOne = cartPage.checkout().fillInfo(Buyer.FIRST_NAME, Buyer.LAST_NAME, "");
 
         stepOne.continueCheckout();
 
@@ -91,6 +99,7 @@ class CheckoutTests extends BaseTest {
     }
 
     @Test
+    @DisplayName("Verify that Cancel on checkout step one returns to the cart, keeping its items")
     @Description("Cancel on checkout step one returns to the cart, keeping its items")
     void cancelOnStepOneReturnsToCart() {
         CartPage backToCart = cartPage.checkout().cancel();
@@ -99,10 +108,11 @@ class CheckoutTests extends BaseTest {
     }
 
     @Test
+    @DisplayName("Verify that Cancel on the checkout overview returns to the full inventory")
     @Description("Cancel on the checkout overview (step two) returns to the full inventory")
     void cancelOnStepTwoReturnsToProducts() {
         ProductsPage backToProducts = cartPage.checkout()
-                .fillInfo("Nelly", "Butera", "00000")
+                .fillInfo(Buyer.FIRST_NAME, Buyer.LAST_NAME, Buyer.POSTAL_CODE)
                 .continueCheckout()
                 .cancel();
 
@@ -110,10 +120,11 @@ class CheckoutTests extends BaseTest {
     }
 
     @Test
+    @DisplayName("Verify that Back Home from the order confirmation page returns to the full inventory")
     @Description("Back Home from the order confirmation page returns to the full inventory")
     void backHomeFromConfirmationReturnsToProducts() {
         ProductsPage backToProducts = cartPage.checkout()
-                .fillInfo("Nelly", "Butera", "00000")
+                .fillInfo(Buyer.FIRST_NAME, Buyer.LAST_NAME, Buyer.POSTAL_CODE)
                 .continueCheckout()
                 .finish()
                 .backToProducts();
@@ -122,10 +133,11 @@ class CheckoutTests extends BaseTest {
     }
 
     @Test
+    @DisplayName("Verify that the order overview's subtotal, tax and total are numerically consistent")
     @Description("The order overview's subtotal, tax and total are all present and numerically consistent")
     void checkoutOverviewTotalsAreConsistent() {
         CheckoutStepTwoPage overview = cartPage.checkout()
-                .fillInfo("Nelly", "Butera", "00000")
+                .fillInfo(Buyer.FIRST_NAME, Buyer.LAST_NAME, Buyer.POSTAL_CODE)
                 .continueCheckout();
 
         // A soft-assertion group: every field is checked and reported, rather than
