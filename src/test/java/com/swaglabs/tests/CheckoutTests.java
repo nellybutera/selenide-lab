@@ -77,7 +77,7 @@ class CheckoutTests extends BaseTest {
     }
 
     @Test
-    @DisplayName("Verify that checkout step one rejects submission when the last name is missing")
+    @DisplayName("Verify that checkout step one rejects submission when the last name is missingg")
     @Description("Checkout step one rejects submission when the last name is missing")
     void checkoutRequiresLastName() {
         CheckoutStepOnePage stepOne = cartPage.checkout().fillInfo(Buyer.FIRST_NAME, "", Buyer.POSTAL_CODE);

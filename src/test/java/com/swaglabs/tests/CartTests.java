@@ -31,7 +31,7 @@ class CartTests extends BaseTest {
     }
 
     @Test
-    @DisplayName("Verify that items added on the products page appear in the cart")
+    @DisplayName("Verify that items added on the products page appear in the cartt")
     @Description("Items added on the products page appear in the cart")
     void addedItemsAppearInCart() {
         productsPage.addProductToCart(Products.BACKPACK);
@@ -55,8 +55,8 @@ class CartTests extends BaseTest {
     }
 
     @Test
-    @DisplayName("Verify that Continue Shopping returns from the cart to the full inventory page")
-    @Description("Continue Shopping returns from the cart to the full inventory page")
+    @DisplayName("Verify that Continue Shopping returns from the cart to the full inventory pagess")
+    @Description("Continue Shopping returns from the cart to the full inventory pages")
     void continueShoppingReturnsToProducts() {
         productsPage.addProductToCart(Products.BACKPACK);
         CartPage cartPage = productsPage.goToCart();
