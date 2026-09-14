@@ -33,11 +33,24 @@ public class ProductsPage {
         return cartBadge;
     }
 
+    /**
+     * ElementsCollection#size() (and asFixedIterable() below) read the DOM immediately
+     * with no retry, unlike shouldHave/shouldBe. Waiting on the page title first - a
+     * stable element present as soon as this page has loaded - forces Selenide's normal
+     * auto-wait to run before we count/read anything, so a call right after a navigation
+     * doesn't catch the page mid-transition and see zero items.
+     */
+    private void waitUntilLoaded() {
+        pageTitle.shouldBe(Condition.visible);
+    }
+
     public int getProductCount() {
+        waitUntilLoaded();
         return inventoryItems.size();
     }
 
     public List<String> getAllProductNames() {
+        waitUntilLoaded();
         return inventoryItems.asFixedIterable().stream()
                 .map(item -> item.$(".inventory_item_name").getText())
                 .collect(Collectors.toList());
