@@ -101,14 +101,33 @@ docker build -t selenide-lab .
 docker run selenide-lab
 ```
 
-## CI / Allure Report
+## CI Architecture
 
-Two workflows:
+Two workflows, answering two different questions:
 
-- **`ci.yml`** — runs on every push/PR to `main` (and on demand via "Run workflow" in the Actions tab), headlessly against both Chrome and Firefox. Failure screenshots are uploaded as workflow artifacts, and the Allure report (from the Chrome run) is published to GitHub Pages.
-- **`nightly.yml`** — runs the full suite once a day (and on demand) independent of any code change. The suite's target is a live external site this repo doesn't control, so this is a canary for the *site* drifting out from under the tests, not just for regressions here.
+| | `ci.yml` | `nightly.yml` |
+|---|---|---|
+| Trigger | a code change (push/PR to `main`), or on demand | the clock — `0 3 * * *` (03:00 UTC daily), or on demand |
+| Answers | "did my change break the suite?" | "did the live site break the suite?" |
+| Who's watching | whoever just pushed / opened the PR | nobody — hence Slack matters most here |
 
-**[View Allure Report](https://nellybutera.github.io/selenide-lab/)**
+**`ci.yml`** runs three jobs on every push/PR:
+- **`test`** — a `chrome`/`firefox` matrix job, installing each browser directly on the runner via `browser-actions/setup-*`. This proves the suite is cross-browser correct.
+- **`docker`** — builds the actual `Dockerfile` and runs the suite inside that container. This is a *different* guarantee from the matrix job: it proves the Dockerfile itself still works, not just that Maven+a browser works on a GitHub-hosted runner.
+- **`notify-on-failure`** — runs once, after both jobs above, only if something failed (`needs: [test, docker]` + `if: ...contains(needs.*.result, 'failure')`). This posts to Slack. It runs once regardless of how many matrix combinations failed, so a bad push doesn't spam the channel with duplicate pings.
+
+The Chrome run of the `test` job also generates the Allure report and publishes it to GitHub Pages — **[view it live](https://nellybutera.github.io/selenide-lab/)**.
+
+**`nightly.yml`** runs the full suite once a day, independent of any code change, against Chrome only. Its own failure step posts to Slack directly (no separate notify job needed — it's a single job, so there's no duplicate-ping risk to guard against).
+
+### Slack notifications
+
+Both workflows post to Slack **only on failure**, via an [Incoming Webhook](https://api.slack.com/messaging/webhooks) stored as the `SLACK_WEBHOOK_URL` repository secret. If that secret isn't set, the step logs `SLACK_WEBHOOK_URL secret not set - skipping Slack notification` and exits cleanly — the workflow doesn't turn red just because Slack isn't configured yet.
+
+To enable it: create an Incoming Webhook for a Slack channel, then set the secret yourself (this prompts for the value and never echoes or logs it):
+```bash
+gh secret set SLACK_WEBHOOK_URL
+```
 
 ## Test Data
 
