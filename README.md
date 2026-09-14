@@ -15,8 +15,8 @@ QA Automation lab — Selenide-based UI test suite for the [Swag Labs demo app](
 | JUnit 5 | 5.12 | Test runner |
 | Allure (allure-selenide, allure-junit5) | 2.29 | Test reporting |
 | Browsers | Chrome + Firefox (headless) | Both run in the CI matrix on every push; the Docker image bundles Chrome |
-| Docker | — | Containerised execution (headless Chrome) |
-| GitHub Actions | — | CI/CD pipeline |
+| Docker | — | Reproducible environment setup — headless Chrome + the exact dependency versions, run both locally and as its own CI job |
+| GitHub Actions | — | CI/CD pipeline: a browser matrix, a Docker job, a nightly canary, and Slack alerts on failure |
 
 ## Project Structure
 
@@ -94,12 +94,14 @@ Screenshots and page source for any failing test are saved automatically under `
 
 ## Run with Docker
 
-The image bundles headless Chrome (Firefox is exercised separately in the CI matrix, see below):
+The image bundles headless Chrome and the exact dependency versions the suite needs — a self-contained environment setup, so "works on my machine" isn't a question (Firefox is exercised separately in the CI matrix, see below):
 
 ```bash
 docker build -t selenide-lab .
 docker run selenide-lab
 ```
+
+This is the same image and command CI's `docker` job runs on every push — see below.
 
 ## CI Architecture
 
@@ -113,8 +115,8 @@ Two workflows, answering two different questions:
 
 **`ci.yml`** runs three jobs on every push/PR:
 - **`test`** — a `chrome`/`firefox` matrix job, installing each browser directly on the runner via `browser-actions/setup-*`. This proves the suite is cross-browser correct.
-- **`docker`** — builds the actual `Dockerfile` and runs the suite inside that container. This is a *different* guarantee from the matrix job: it proves the Dockerfile itself still works, not just that Maven+a browser works on a GitHub-hosted runner.
-- **`notify-on-failure`** — runs once, after both jobs above, only if something failed (`needs: [test, docker]` + `if: ...contains(needs.*.result, 'failure')`). This posts to Slack. It runs once regardless of how many matrix combinations failed, so a bad push doesn't spam the channel with duplicate pings.
+- **`docker`** — builds the actual `Dockerfile` and runs the suite inside that container: environment setup as code, not a manual runner install. This is a *different* guarantee from the matrix job — it proves the Dockerfile/image itself still works, not just that Maven+a browser works on a GitHub-hosted runner. It's genuinely caught real bugs the matrix job didn't (see commit history — two race conditions in page objects were found by this job within an hour of it existing).
+- **`notify-on-failure`** — runs once, after both jobs above, only if something failed (`needs: [test, docker]` + `if: ...contains(needs.*.result, 'failure')`). Posts to Slack. Runs once regardless of how many matrix combinations failed, so a bad push doesn't spam the channel with duplicate pings.
 
 The Chrome run of the `test` job also generates the Allure report and publishes it to GitHub Pages — **[view it live](https://nellybutera.github.io/selenide-lab/)**.
 
@@ -122,7 +124,12 @@ The Chrome run of the `test` job also generates the Allure report and publishes 
 
 ### Slack notifications
 
-Both workflows post to Slack **only on failure**, via an [Incoming Webhook](https://api.slack.com/messaging/webhooks) stored as the `SLACK_WEBHOOK_URL` repository secret. If that secret isn't set, the step logs `SLACK_WEBHOOK_URL secret not set - skipping Slack notification` and exits cleanly — the workflow doesn't turn red just because Slack isn't configured yet.
+Both workflows post to Slack **only on failure**, via an [Incoming Webhook](https://api.slack.com/messaging/webhooks) stored as the `SLACK_WEBHOOK_URL` repository secret. Each message is a Slack Block Kit card, not a one-line ping:
+
+- **`ci.yml`** — repository, branch, who/what triggered it (push, PR, or manual dispatch), a link to the exact commit, the browser-matrix result and the Docker job result *individually* (so you know at a glance whether it's a real regression or just one environment), and a **View run** button.
+- **`nightly.yml`** — the same repository/commit/button info, plus a note on *why it matters*: this run wasn't triggered by a push, so a failure here means either saucedemo.com itself changed (the whole point of this canary) or the suite regressed silently since the last commit — and nobody is watching in real time to notice.
+
+If the secret isn't set, the step logs `SLACK_WEBHOOK_URL secret not set - skipping Slack notification` and exits cleanly — the workflow doesn't turn red just because Slack isn't configured.
 
 To enable it: create an Incoming Webhook for a Slack channel, then set the secret yourself (this prompts for the value and never echoes or logs it):
 ```bash
