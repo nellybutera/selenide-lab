@@ -13,7 +13,14 @@ public class CartPage {
     private final SelenideElement checkoutButton = $("#checkout");
     private final SelenideElement continueShoppingButton = $("#continue-shopping");
 
+    /**
+     * ElementsCollection#size() reads the DOM immediately with no retry, unlike
+     * shouldHave/shouldBe - calling it right after a navigation can catch the page
+     * mid-transition and return 0. Waiting on a stable, always-present element first
+     * forces Selenide's normal auto-wait to run before we count anything.
+     */
     public int getItemCount() {
+        checkoutButton.shouldBe(Condition.visible);
         return cartItems.size();
     }
 
