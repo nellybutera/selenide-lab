@@ -43,11 +43,43 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
         run: |
           if [ -z "$SLACK_WEBHOOK_URL" ]; then
             echo "SLACK_WEBHOOK_URL secret not set - skipping Slack notification"
             exit 0
           fi
-          curl -sf -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"⚠️ Nightly Regression Run failed - the live site or the suite may have drifted. <$RUN_URL|View run>\"}" \
-            "$SLACK_WEBHOOK_URL"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          cat > slack_payload.json <<EOF
+          {
+            "blocks": [
+              {
+                "type": "header",
+                "text": { "type": "plain_text", "text": "⚠️ Nightly Regression Run failed", "emoji": true }
+              },
+              {
+                "type": "section",
+                "text": { "type": "mrkdwn", "text": "No code was pushed to trigger this - it ran on schedule against the live site. Either *saucedemo.com changed* (site drift, the whole point of this canary) or *the suite itself regressed silently* since the last push. Nobody is watching this run in real time, so check it." }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  { "type": "mrkdwn", "text": "*Repository:*\n<$REPO_URL|$REPO>" },
+                  { "type": "mrkdwn", "text": "*Triggered by:*\n$EVENT_NAME" },
+                  { "type": "mrkdwn", "text": "*Commit tested:*\n<$COMMIT_URL|$SHORT_SHA>" }
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  { "type": "button", "text": { "type": "plain_text", "text": "View run" }, "url": "$RUN_URL" }
+                ]
+              }
+            ]
+          }
+          EOF
+          curl -sf -X POST -H 'Content-type: application/json' --data @slack_payload.json "$SLACK_WEBHOOK_URL"
