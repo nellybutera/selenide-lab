@@ -72,3 +72,46 @@ jobs:
         with:
           folder: allure-history
           branch: gh-pages
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t selenide-lab .
+
+      - name: Run the suite inside the container
+        run: |
+          mkdir -p target
+          docker run --rm --shm-size=2g -e CI=true \
+            -v "$PWD/target:/app/target" \
+            selenide-lab
+
+      - name: Upload failure screenshots (docker)
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: screenshots-docker
+          path: target/screenshots
+          if-no-files-found: ignore
+
+  notify-on-failure:
+    needs: [ test, docker ]
+    if: always() && contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_WEBHOOK_URL secret not set - skipping Slack notification"
+            exit 0
+          fi
+          curl -sf -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"❌ Selenide UI Tests failed on \`$BRANCH\`. <$RUN_URL|View run>\"}" \
+            "$SLACK_WEBHOOK_URL"
